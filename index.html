@@ -1,17 +1,19 @@
-# Updating the Three.js 3D scene with corrected joystick controls and cube placement
+# Updating the Three.js 3D scene with dark mode, gravity, movement limits, and version display
 
-updated_html_content = """
+final_html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Mobile Sandbox</title>
+    <title>3D Mobile Sandbox v0.3</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background: #000;
+            color: #ddd;
         }
         #joysticks {
             position: absolute;
@@ -24,26 +26,36 @@ updated_html_content = """
         .joystick {
             width: 100px;
             height: 100px;
-            background: rgba(128, 128, 128, 0.5);
+            background: rgba(60, 0, 60, 0.7);
             border-radius: 50%;
             pointer-events: auto;
             touch-action: none;
+            border: 2px solid #9400d3;
         }
         #placeCubeBtn {
             position: absolute;
             top: 20px;
             right: 20px;
             padding: 10px 15px;
-            background: #4CAF50;
+            background: #9400d3;
             color: white;
             border: none;
             border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
         }
+        #version {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #9400d3;
+            font-size: 16px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+    <div id="version">v0.3</div>
     <button id="placeCubeBtn">Place Cube</button>
     <div id="joysticks">
         <div class="joystick" id="moveJoystick"></div>
@@ -54,24 +66,32 @@ updated_html_content = """
     <script>
         // Scene setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+        scene.background = new THREE.Color(0x000000); // Black skybox
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 10);
+        camera.position.set(0, 2, 10);
         camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
         document.body.appendChild(renderer.domElement);
         
         // Lighting
-        const light = new THREE.DirectionalLight(0xffffff, 1);
+        const light = new THREE.DirectionalLight(0x9400d3, 0.8);
         light.position.set(1, 1, 1).normalize();
         scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
+        scene.add(new THREE.AmbientLight(0x4b0082));
         
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(20, 20);
+        // Violet grid
+        const gridHelper = new THREE.GridHelper(20, 20, 0x9400d3, 0x9400d3);
         scene.add(gridHelper);
+        
+        // Plane to keep camera on
+        const planeGeometry = new THREE.PlaneGeometry(20, 20);
+        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x9400d3, side: THREE.DoubleSide, visible: false });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
         
         // Cube placement
         const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -79,11 +99,11 @@ updated_html_content = """
         document.getElementById('placeCubeBtn').addEventListener('touchend', (e) => {
             e.preventDefault();
             const cubeMaterial = new THREE.MeshPhongMaterial({
-                color: Math.random() * 0xffffff,
+                color: Math.random() * 0x663399 + 0x330066,
             });
             const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            // Place cube in front of the camera
-            cube.position.copy(camera.position).add(camera.getWorldDirection().multiplyScalar(5));
+            cube.position.copy(camera.position).add(camera.getWorldDirection().multiplyScalar(3));
+            cube.position.y = 1.5; // Place on plane
             scene.add(cube);
         });
         
@@ -105,8 +125,8 @@ updated_html_content = """
                 const rect = moveJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                moveX = (x - 0.5) * 2; // Left/Right
-                moveZ = (y - 0.5) * -2; // Forward/Backward
+                moveX = (x - 0.5) * 2;
+                moveZ = (y - 0.5) * -2;
             }
         }, { passive: false });
         
@@ -130,8 +150,8 @@ updated_html_content = """
                 const rect = lookJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                lookX = (x - 0.5) * 2; // Left/Right
-                lookY = (y - 0.5) * 2; // Up/Down
+                lookX = (x - 0.5) * 2;
+                lookY = (y - 0.5) * 2;
             }
         }, { passive: false });
         
@@ -147,15 +167,14 @@ updated_html_content = """
         function animate() {
             requestAnimationFrame(animate);
             
-            // Move camera based on joystick
-            camera.position.x += moveX * 0.1;
-            camera.position.z += moveZ * 0.1;
+            // Move camera with gravity (keep on plane)
+            camera.position.y = 2; // Lock height
+            camera.position.x = Math.max(-9, Math.min(9, camera.position.x + moveX * 0.1));
+            camera.position.z = Math.max(-9, Math.min(9, camera.position.z + moveZ * 0.1));
             
-            // Rotate camera based on look joystick
+            // Rotate camera
             camera.rotation.y += lookX * 0.01;
-            // Limit vertical rotation to avoid over-tilting
-            camera.rotation.x += lookY * 0.01;
-            camera.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, camera.rotation.x));
+            camera.rotation.x = Math.max(-Math.PI/6, Math.min(Math.PI/6, camera.rotation.x + lookY * 0.01));
             
             renderer.render(scene, camera);
         }
@@ -172,9 +191,9 @@ updated_html_content = """
 </html>
 """
 
-# Save the updated HTML content to a file
-updated_file_path = '3d_mobile_sandbox_fixed.html'
-with open(updated_file_path, 'w') as f:
-    f.write(updated_html_content)
+# Save the final HTML content to a file
+final_file_path = '3d_mobile_sandbox_v03.html'
+with open(final_file_path, 'w') as f:
+    f.write(final_html_content)
 
-updated_file_path
+final_file_path
