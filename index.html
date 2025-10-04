@@ -146,7 +146,7 @@
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
                 lookX = (x - 0.5) * 2; // Left/Right
-                lookY = (y - 0.5) * 2; // Up/Down
+                lookY = (y + 0.5) * 2; // Up/Down
             }
         }, { passive: false });
 
