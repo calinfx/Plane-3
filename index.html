@@ -1,12 +1,12 @@
-# Updating the Three.js 3D scene with dark mode, gravity, movement limits, and version display
+# Updating the Three.js 3D scene with reversed joystick axes, relative movement, placement preview, and UI tweaks
 
-final_html_content = """
+v04_html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Mobile Sandbox v0.3</title>
+    <title>3D Mobile Sandbox v0.4</title>
     <style>
         body {
             margin: 0;
@@ -32,16 +32,17 @@ final_html_content = """
             touch-action: none;
             border: 2px solid #9400d3;
         }
-        #placeCubeBtn {
+        #placeBtn {
             position: absolute;
-            top: 20px;
+            bottom: 130px;
             right: 20px;
             padding: 10px 15px;
             background: #9400d3;
-            color: white;
+            color: black;
             border: none;
             border-radius: 5px;
             font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
         }
         #version {
@@ -55,8 +56,8 @@ final_html_content = """
     </style>
 </head>
 <body>
-    <div id="version">v0.3</div>
-    <button id="placeCubeBtn">Place Cube</button>
+    <div id="version">v0.4</div>
+    <button id="placeBtn">Place</button>
     <div id="joysticks">
         <div class="joystick" id="moveJoystick"></div>
         <div class="joystick" id="lookJoystick"></div>
@@ -93,19 +94,16 @@ final_html_content = """
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
         
-        // Cube placement
-        const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+        // Cube placement preview (red wireframe)
+        const previewGeometry = new THREE.BoxGeometry(1.05, 1.05, 1.05);
+        const previewMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+        const previewCube = new THREE.Mesh(previewGeometry, previewMaterial);
+        previewCube.visible = false;
+        scene.add(previewCube);
         
-        document.getElementById('placeCubeBtn').addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const cubeMaterial = new THREE.MeshPhongMaterial({
-                color: Math.random() * 0x663399 + 0x330066,
-            });
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.copy(camera.position).add(camera.getWorldDirection().multiplyScalar(3));
-            cube.position.y = 1.5; // Place on plane
-            scene.add(cube);
-        });
+        // Raycaster for grid intersection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
         
         // Joystick logic
         const moveJoystick = document.getElementById('moveJoystick');
@@ -125,8 +123,8 @@ final_html_content = """
                 const rect = moveJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                moveX = (x - 0.5) * 2;
-                moveZ = (y - 0.5) * -2;
+                moveX = (x - 0.5) * 2; // Left/Right
+                moveZ = (y - 0.5) * 2; // Forward/Backward (reversed)
             }
         }, { passive: false });
         
@@ -150,8 +148,8 @@ final_html_content = """
                 const rect = lookJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                lookX = (x - 0.5) * 2;
-                lookY = (y - 0.5) * 2;
+                lookX = (x - 0.5) * -2; // Reversed
+                lookY = (y - 0.5) * -2; // Reversed
             }
         }, { passive: false });
         
@@ -163,18 +161,55 @@ final_html_content = """
             }
         });
         
+        // Update preview cube position
+        function updatePreview() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(plane);
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                previewCube.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
+                previewCube.position.y = 0.5;
+                previewCube.visible = true;
+            } else {
+                previewCube.visible = false;
+            }
+        }
+        
+        // Place cube
+        document.getElementById('placeBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (previewCube.visible) {
+                const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+                const cubeMaterial = new THREE.MeshPhongMaterial({
+                    color: Math.random() * 0x663399 + 0x330066,
+                });
+                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                cube.position.copy(previewCube.position);
+                scene.add(cube);
+            }
+        });
+        
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             
-            // Move camera with gravity (keep on plane)
+            // Move camera relative to view
+            const forward = new THREE.Vector3(0, 0, moveZ * -0.1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(moveX * 0.1, 0, 0).applyQuaternion(camera.quaternion);
+            camera.position.add(forward);
+            camera.position.add(right);
             camera.position.y = 2; // Lock height
-            camera.position.x = Math.max(-9, Math.min(9, camera.position.x + moveX * 0.1));
-            camera.position.z = Math.max(-9, Math.min(9, camera.position.z + moveZ * 0.1));
+            
+            // Limit movement
+            camera.position.x = Math.max(-9, Math.min(9, camera.position.x));
+            camera.position.z = Math.max(-9, Math.min(9, camera.position.z));
             
             // Rotate camera
             camera.rotation.y += lookX * 0.01;
             camera.rotation.x = Math.max(-Math.PI/6, Math.min(Math.PI/6, camera.rotation.x + lookY * 0.01));
+            
+            // Update preview
+            updatePreview();
             
             renderer.render(scene, camera);
         }
@@ -191,9 +226,9 @@ final_html_content = """
 </html>
 """
 
-# Save the final HTML content to a file
-final_file_path = '3d_mobile_sandbox_v03.html'
-with open(final_file_path, 'w') as f:
-    f.write(final_html_content)
+# Save the v0.4 HTML content to a file
+v04_file_path = '3d_mobile_sandbox_v04.html'
+with open(v04_file_path, 'w') as f:
+    f.write(v04_html_content)
 
-final_file_path
+v04_file_path
