@@ -1,7 +1,6 @@
-# Creating a basic Three.js 3D scene with touch joystick controls for mobile
-# This will be a single HTML file with embedded CSS and JavaScript
+# Updating the Three.js 3D scene with corrected joystick controls and cube placement
 
-html_content = """
+updated_html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,43 +51,43 @@ html_content = """
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB); // Sky blue background
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.y = 5;
-        
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
         
         // Lighting
-        const light = new THREE.HemisphereLight(0xffffff, 0x080820, 1);
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(1, 1, 1).normalize();
         scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
         
         // Grid helper
         const gridHelper = new THREE.GridHelper(20, 20);
         scene.add(gridHelper);
         
         // Cube placement
-        const cubes = [];
         const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
         
-        document.getElementById('placeCubeBtn').addEventListener('click', () => {
+        document.getElementById('placeCubeBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
             const cubeMaterial = new THREE.MeshPhongMaterial({
                 color: Math.random() * 0xffffff,
-                shininess: 30
             });
             const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.copy(camera.position).add(camera.getWorldDirection().multiplyScalar(3));
-            cube.position.y = Math.round(cube.position.y);
+            // Place cube in front of the camera
+            cube.position.copy(camera.position).add(camera.getWorldDirection().multiplyScalar(5));
             scene.add(cube);
-            cubes.push(cube);
         });
         
-        // Joystick logic (simplified for mobile)
+        // Joystick logic
         const moveJoystick = document.getElementById('moveJoystick');
         const lookJoystick = document.getElementById('lookJoystick');
         let moveTouchId = null, lookTouchId = null;
@@ -106,8 +105,8 @@ html_content = """
                 const rect = moveJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                moveX = (x - 0.5) * 2;
-                moveZ = (y - 0.5) * -2;
+                moveX = (x - 0.5) * 2; // Left/Right
+                moveZ = (y - 0.5) * -2; // Forward/Backward
             }
         }, { passive: false });
         
@@ -131,8 +130,8 @@ html_content = """
                 const rect = lookJoystick.getBoundingClientRect();
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
-                lookX = (x - 0.5) * 2;
-                lookY = (y - 0.5) * 2;
+                lookX = (x - 0.5) * 2; // Left/Right
+                lookY = (y - 0.5) * 2; // Up/Down
             }
         }, { passive: false });
         
@@ -154,7 +153,9 @@ html_content = """
             
             // Rotate camera based on look joystick
             camera.rotation.y += lookX * 0.01;
+            // Limit vertical rotation to avoid over-tilting
             camera.rotation.x += lookY * 0.01;
+            camera.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, camera.rotation.x));
             
             renderer.render(scene, camera);
         }
@@ -171,9 +172,9 @@ html_content = """
 </html>
 """
 
-# Save the HTML content to a file
-file_path = '3d_mobile_sandbox.html'
-with open(file_path, 'w') as f:
-    f.write(html_content)
+# Save the updated HTML content to a file
+updated_file_path = '3d_mobile_sandbox_fixed.html'
+with open(updated_file_path, 'w') as f:
+    f.write(updated_html_content)
 
-file_path
+updated_file_path
