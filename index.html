@@ -1,12 +1,12 @@
-# Updating the Three.js 3D scene with reversed joystick axes, relative movement, placement preview, and UI tweaks
+# Updating the Three.js 3D scene with all dark mode, reversed left joystick, and locked horizon
 
-v04_html_content = """
+v05_html_content = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Mobile Sandbox v0.4</title>
+    <title>3D Mobile Sandbox v0.5</title>
     <style>
         body {
             margin: 0;
@@ -56,7 +56,7 @@ v04_html_content = """
     </style>
 </head>
 <body>
-    <div id="version">v0.4</div>
+    <div id="version">v0.5</div>
     <button id="placeBtn">Place</button>
     <div id="joysticks">
         <div class="joystick" id="moveJoystick"></div>
@@ -124,7 +124,7 @@ v04_html_content = """
                 const x = (touch.clientX - rect.left) / rect.width;
                 const y = (touch.clientY - rect.top) / rect.height;
                 moveX = (x - 0.5) * 2; // Left/Right
-                moveZ = (y - 0.5) * 2; // Forward/Backward (reversed)
+                moveZ = (y - 0.5) * 2; // Forward/Backward (reversed again)
             }
         }, { passive: false });
         
@@ -204,12 +204,8 @@ v04_html_content = """
             camera.position.x = Math.max(-9, Math.min(9, camera.position.x));
             camera.position.z = Math.max(-9, Math.min(9, camera.position.z));
             
-            // Rotate camera
+            // Rotate camera (locked horizon)
             camera.rotation.y += lookX * 0.01;
-            camera.rotation.x = Math.max(-Math.PI/6, Math.min(Math.PI/6, camera.rotation.x + lookY * 0.01));
-            
-            // Update preview
-            updatePreview();
             
             renderer.render(scene, camera);
         }
@@ -226,9 +222,9 @@ v04_html_content = """
 </html>
 """
 
-# Save the v0.4 HTML content to a file
-v04_file_path = '3d_mobile_sandbox_v04.html'
-with open(v04_file_path, 'w') as f:
-    f.write(v04_html_content)
+# Save the v0.5 HTML content to a file
+v05_file_path = '3d_mobile_sandbox_v05.html'
+with open(v05_file_path, 'w') as f:
+    f.write(v05_html_content)
 
-v04_file_path
+v05_file_path
