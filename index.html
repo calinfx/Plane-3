@@ -8,9 +8,9 @@ TABLE OF CONTENTS (TOC)
 4. Grid & Base Plane
 5. Joysticks (Movement & Look)
 6. Gravity & Movement
-7. Raycaster & Red Cube Cursor
+7. Raycaster & Red Cube Cursor (Grid Snapping)
 8. Crosshair
-9. Cube Placement/Removal
+9. Cube Placement/Removal (Color Variety & Grid Snapping)
 10. UI & Version Display
 11. Animation Loop
 */
@@ -130,6 +130,19 @@ TABLE OF CONTENTS (TOC)
     const direction = new THREE.Vector3();
     const GRAVITY = -0.01;
     const PLANE_SIZE = 20;
+    const GRID_SIZE = 1;
+
+    // Cube colors in violet/magenta/burgundy/scarlet range
+    const cubeColors = [
+      0x8B00FF, // Violet
+      0xFF00FF, // Magenta
+      0x800020, // Burgundy
+      0xFF2400, // Scarlet
+      0x9400D3, // Dark Violet
+      0x9932CC, // Dark Orchid
+      0x8A2BE2, // Blue Violet
+      0xDC143C  // Crimson
+    ];
 
     // =============================================
     // 2. Scene & Renderer
@@ -238,7 +251,7 @@ TABLE OF CONTENTS (TOC)
         moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       } else {
         lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        lookJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+        lookJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance; // Flipped
       }
     }
 
@@ -279,7 +292,7 @@ TABLE OF CONTENTS (TOC)
     function updateLook() {
       if (lookJoystickActive) {
         camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
-        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch (up/down)
+        camera.rotation.x += lookJoystick.y * 0.02; // Pitch (up/down) - Flipped
         // Clamp pitch to avoid over-rotation
         camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
         // Reset roll to zero (no roll)
@@ -288,7 +301,7 @@ TABLE OF CONTENTS (TOC)
     }
 
     // =============================================
-    // 7. Raycaster & Red Cube Cursor
+    // 7. Raycaster & Red Cube Cursor (Grid Snapping)
     // =============================================
     raycaster = new THREE.Raycaster();
     const cursorCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -305,8 +318,10 @@ TABLE OF CONTENTS (TOC)
       const intersects = raycaster.intersectObjects([plane, ...cubes]);
       if (intersects.length > 0) {
         const intersect = intersects[0];
-        // Position cursor cube fully above the surface
-        cursorCubeLine.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
+        // Snap cursor to grid
+        const snappedX = Math.round(intersect.point.x / GRID_SIZE) * GRID_SIZE;
+        const snappedZ = Math.round(intersect.point.z / GRID_SIZE) * GRID_SIZE;
+        cursorCubeLine.position.set(snappedX, intersect.point.y + 0.5, snappedZ);
         cursorCubeLine.visible = true;
       } else {
         cursorCubeLine.visible = false;
@@ -319,13 +334,15 @@ TABLE OF CONTENTS (TOC)
     // Already in HTML/CSS
 
     // =============================================
-    // 9. Cube Placement/Removal
+    // 9. Cube Placement/Removal (Color Variety & Grid Snapping)
     // =============================================
     document.getElementById('placeButton').addEventListener('click', () => {
       if (cursorCubeLine.visible) {
         const cube = new THREE.Mesh(
           new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({ color: 0x8B00FF })
+          new THREE.MeshStandardMaterial({
+            color: cubeColors[Math.floor(Math.random() * cubeColors.length)]
+          })
         );
         cube.position.copy(cursorCubeLine.position);
         scene.add(cube);
