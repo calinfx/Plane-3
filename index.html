@@ -49,8 +49,8 @@ TABLE OF CONTENTS (TOC)
     }
     .joystick {
       position: absolute;
-      width: 115px; /* 15% larger */
-      height: 115px; /* 15% larger */
+      width: 115px;
+      height: 115px;
       background: rgba(170, 85, 255, 0.3);
       border-radius: 50%;
       border: 2px solid #aa55ff;
@@ -58,21 +58,21 @@ TABLE OF CONTENTS (TOC)
     }
     #moveJoystick {
       bottom: 20px;
-      right: 20px; /* Movement joystick on the right */
+      right: 20px;
     }
     #lookJoystick {
       bottom: 20px;
-      left: 20px; /* Look joystick on the left */
+      left: 20px;
     }
     .joystick-inner {
       position: absolute;
-      width: 64px; /* 15% larger (50px * 1.15 ~ 57.5, rounded up) */
-      height: 64px; /* 15% larger */
-      background: rgba(51, 0, 68, 0.8); /* Dark purple, no white/gray */
+      width: 38px; /* 30% smaller */
+      height: 38px; /* 30% smaller */
+      background: rgba(255, 0, 255, 0.8); /* Magenta */
       border-radius: 50%;
-      border: none; /* Removed white border */
-      top: 25.5px; /* Adjusted for new size */
-      left: 25.5px; /* Adjusted for new size */
+      border: none;
+      top: 38.5px; /* Adjusted for new size */
+      left: 38.5px; /* Adjusted for new size */
       touch-action: none;
     }
   </style>
@@ -100,6 +100,7 @@ TABLE OF CONTENTS (TOC)
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const GRAVITY = -0.01;
+    const PLANE_SIZE = 20;
 
     // =============================================
     // 2. Scene & Renderer
@@ -128,10 +129,10 @@ TABLE OF CONTENTS (TOC)
     // =============================================
     // 4. Grid & Base Plane
     // =============================================
-    const gridHelper = new THREE.GridHelper(20, 20, 0xaa55ff, 0xaa55ff);
+    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0xaa55ff, 0xaa55ff);
     scene.add(gridHelper);
 
-    const planeGeometry = new THREE.PlaneGeometry(20, 20);
+    const planeGeometry = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE);
     const planeMaterial = new THREE.MeshStandardMaterial({
       color: 0x220033,
       side: THREE.DoubleSide,
@@ -160,8 +161,8 @@ TABLE OF CONTENTS (TOC)
     });
     moveJoystickElement.addEventListener('touchend', () => {
       moveJoystickActive = false;
-      moveJoystickInner.style.left = '25.5px';
-      moveJoystickInner.style.top = '25.5px';
+      moveJoystickInner.style.left = '38.5px';
+      moveJoystickInner.style.top = '38.5px';
       moveJoystick = { x: 0, y: 0 };
     });
 
@@ -180,8 +181,8 @@ TABLE OF CONTENTS (TOC)
     });
     lookJoystickElement.addEventListener('touchend', () => {
       lookJoystickActive = false;
-      lookJoystickInner.style.left = '25.5px';
-      lookJoystickInner.style.top = '25.5px';
+      lookJoystickInner.style.left = '38.5px';
+      lookJoystickInner.style.top = '38.5px';
       lookJoystick = { x: 0, y: 0 };
     });
 
@@ -205,7 +206,7 @@ TABLE OF CONTENTS (TOC)
 
       if (outer.id === 'moveJoystick') {
         moveJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        moveJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+        moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance; // Reversed
       } else {
         lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
         lookJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
@@ -217,9 +218,11 @@ TABLE OF CONTENTS (TOC)
     // =============================================
     function updateMovement() {
       if (moveJoystickActive) {
-        // Forward/backward flipped (Y-axis inverted)
-        direction.z = moveJoystick.y;
-        direction.x = moveJoystick.x;
+        direction.z = -moveJoystick.y; // Forward/backward
+        direction.x = moveJoystick.x; // Left/right
+      } else {
+        direction.z = 0;
+        direction.x = 0;
       }
       direction.normalize();
 
@@ -231,6 +234,10 @@ TABLE OF CONTENTS (TOC)
       controls.moveForward(velocity.z);
       camera.position.y += velocity.y;
 
+      // Clamp to plane boundaries
+      camera.position.x = Math.max(-PLANE_SIZE/2, Math.min(PLANE_SIZE/2, camera.position.x));
+      camera.position.z = Math.max(-PLANE_SIZE/2, Math.min(PLANE_SIZE/2, camera.position.z));
+
       if (camera.position.y < 0.5) {
         camera.position.y = 0.5;
         velocity.y = 0;
@@ -238,14 +245,16 @@ TABLE OF CONTENTS (TOC)
     }
 
     // =============================================
-    // Look Controls (Pitch/Yaw)
+    // Look Controls (Pitch/Yaw Only)
     // =============================================
     function updateLook() {
       if (lookJoystickActive) {
-        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
-        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch (up/down)
+        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw
+        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch
         // Clamp pitch to avoid over-rotation
         camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
+        // Reset roll to zero (no roll)
+        camera.rotation.z = 0;
       }
     }
 
