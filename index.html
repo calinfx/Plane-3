@@ -61,6 +61,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/renderers/CSS2DRenderer.js"></script>
+
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -90,6 +92,24 @@
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
+
+        // Label renderer
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+document.body.appendChild(labelRenderer.domElement);
+
+// Create a label for the spinning cube
+const cubeLabel = document.createElement('div');
+cubeLabel.className = 'label';
+cubeLabel.textContent = 'Spinny Cube';
+cubeLabel.style.color = '#9400d3';
+cubeLabel.style.fontSize = '16px';
+const cubeLabelObject = new THREE.CSS2DObject(cubeLabel);
+cubeLabelObject.position.set(3, 2, 3); // Above the cube
+scene.add(cubeLabelObject);
+
 
         // Spinning cube
 const spinningCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
