@@ -9,9 +9,10 @@ TABLE OF CONTENTS (TOC)
 5. Joysticks (Movement & Look)
 6. Gravity & Movement
 7. Raycaster & Red Cube Cursor
-8. Cube Placement/Removal
-9. UI & Version Display
-10. Animation Loop
+8. Crosshair
+9. Cube Placement/Removal
+10. UI & Version Display
+11. Animation Loop
 */
 
 <!DOCTYPE html>
@@ -31,29 +32,29 @@ TABLE OF CONTENTS (TOC)
       position: absolute;
       top: 10px;
       left: 10px;
-      color: #aa55ff;
+      color: #8B00FF; /* Proper violet */
       font-family: Arial, sans-serif;
       z-index: 100;
     }
     #placeButton {
       position: absolute;
-      bottom: 20px;
+      bottom: 130px; /* Above right joystick */
       right: 20px;
-      background: #aa55ff;
+      background: #8B00FF; /* Proper violet */
       color: #000;
       border: none;
       padding: 10px 20px;
       font-weight: bold;
-      border-radius: 5px;
+      border-radius: 15px; /* Rounded corners */
       z-index: 100;
     }
     .joystick {
       position: absolute;
       width: 115px;
       height: 115px;
-      background: rgba(170, 85, 255, 0.3);
+      background: rgba(139, 0, 255, 0.3); /* Proper violet */
       border-radius: 50%;
-      border: 2px solid #aa55ff;
+      border: 2px solid #8B00FF; /* Proper violet */
       z-index: 100;
     }
     #moveJoystick {
@@ -66,20 +67,48 @@ TABLE OF CONTENTS (TOC)
     }
     .joystick-inner {
       position: absolute;
-      width: 38px; /* 30% smaller */
-      height: 38px; /* 30% smaller */
-      background: rgba(255, 0, 255, 0.8); /* Magenta */
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 105, 0, 0.8); /* Orange */
       border-radius: 50%;
       border: none;
-      top: 38.5px; /* Adjusted for new size */
-      left: 38.5px; /* Adjusted for new size */
+      top: 38.5px;
+      left: 38.5px;
       touch-action: none;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 100;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 105, 0, 0.8); /* Orange */
+    }
+    #crosshair::before {
+      width: 2px;
+      height: 20px;
+      left: 9px;
+      top: 0;
+    }
+    #crosshair::after {
+      width: 20px;
+      height: 2px;
+      left: 0;
+      top: 9px;
     }
   </style>
 </head>
 <body>
   <div id="version">v0.1</div>
   <button id="placeButton">Place</button>
+  <div id="crosshair"></div>
   <div class="joystick" id="moveJoystick">
     <div class="joystick-inner" id="moveJoystickInner"></div>
   </div>
@@ -122,19 +151,19 @@ TABLE OF CONTENTS (TOC)
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xaa55ff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0x8B00FF, 0.8); /* Proper violet */
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
     // =============================================
     // 4. Grid & Base Plane
     // =============================================
-    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0xaa55ff, 0xaa55ff);
+    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0x8B00FF, 0x8B00FF); /* Proper violet */
     scene.add(gridHelper);
 
     const planeGeometry = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x220033,
+      color: 0x4B0082, /* Proper violet */
       side: THREE.DoubleSide,
     });
     plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -206,7 +235,7 @@ TABLE OF CONTENTS (TOC)
 
       if (outer.id === 'moveJoystick') {
         moveJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance; // Reversed
+        moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       } else {
         lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
         lookJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
@@ -218,8 +247,8 @@ TABLE OF CONTENTS (TOC)
     // =============================================
     function updateMovement() {
       if (moveJoystickActive) {
-        direction.z = -moveJoystick.y; // Forward/backward
-        direction.x = moveJoystick.x; // Left/right
+        direction.z = -moveJoystick.y;
+        direction.x = moveJoystick.x;
       } else {
         direction.z = 0;
         direction.x = 0;
@@ -262,46 +291,54 @@ TABLE OF CONTENTS (TOC)
     // 7. Raycaster & Red Cube Cursor
     // =============================================
     raycaster = new THREE.Raycaster();
-    const cursorCubeGeometry = new THREE.BoxGeometry(1.05, 1.05, 1.05);
-    const cursorCubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-    cursorCube = new THREE.Mesh(cursorCubeGeometry, cursorCubeMaterial);
-    cursorCube.visible = false;
-    scene.add(cursorCube);
+    const cursorCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const cursorCubeEdges = new THREE.EdgesGeometry(cursorCubeGeometry);
+    const cursorCubeLine = new THREE.LineSegments(
+      cursorCubeEdges,
+      new THREE.LineBasicMaterial({ color: 0xff0000 })
+    );
+    cursorCubeLine.visible = false;
+    scene.add(cursorCubeLine);
 
     function updateCursor() {
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
       const intersects = raycaster.intersectObjects([plane, ...cubes]);
       if (intersects.length > 0) {
         const intersect = intersects[0];
-        cursorCube.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
-        cursorCube.visible = true;
+        cursorCubeLine.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
+        cursorCubeLine.visible = true;
       } else {
-        cursorCube.visible = false;
+        cursorCubeLine.visible = false;
       }
     }
 
     // =============================================
-    // 8. Cube Placement/Removal
+    // 8. Crosshair
+    // =============================================
+    // Already in HTML/CSS
+
+    // =============================================
+    // 9. Cube Placement/Removal
     // =============================================
     document.getElementById('placeButton').addEventListener('click', () => {
-      if (cursorCube.visible) {
+      if (cursorCubeLine.visible) {
         const cube = new THREE.Mesh(
           new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({ color: 0xaa55ff })
+          new THREE.MeshStandardMaterial({ color: 0x8B00FF }) /* Proper violet */
         );
-        cube.position.copy(cursorCube.position);
+        cube.position.copy(cursorCubeLine.position);
         scene.add(cube);
         cubes.push(cube);
       }
     });
 
     // =============================================
-    // 9. UI & Version Display
+    // 10. UI & Version Display
     // =============================================
     // Already in HTML
 
     // =============================================
-    // 10. Animation Loop
+    // 11. Animation Loop
     // =============================================
     function animate() {
       requestAnimationFrame(animate);
