@@ -1,20 +1,3 @@
-/*
-=============================================
-TABLE OF CONTENTS (TOC)
-=============================================
-1. Setup & Imports
-2. Scene & Renderer
-3. Camera & Lighting
-4. Grid & Base Plane
-5. Joysticks (Movement & Look)
-6. Gravity & Movement
-7. Raycaster & Red Cube Cursor (Grid-Aligned & Vertical Snapping)
-8. Crosshair
-9. Cube Placement/Removal (Color Variety & Grid Snapping)
-10. UI & Version Display
-11. Animation Loop
-*/
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,262 +5,160 @@ TABLE OF CONTENTS (TOC)
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D Cube Builder</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #000;
-      touch-action: none;
+    body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
+    #version { position: absolute; top: 10px; left: 10px; color: #8B00FF; z-index: 100; }
+    #placeButton, #mineButton {
+      position: absolute; bottom: 130px; padding: 10px 20px;
+      border: none; font-weight: bold; border-radius: 15px; z-index: 100;
+      background: #8B00FF; color: #000;
     }
-    #version {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #8B00FF;
-      font-family: Arial, sans-serif;
-      z-index: 100;
-    }
-    #placeButton {
-      position: absolute;
-      bottom: 130px;
-      right: 20px;
-      background: #8B00FF;
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 15px;
-      z-index: 100;
-    }
-    #mineButton {
-      position: absolute;
-      bottom: 130px;
-      right: 100px;
-      background: #8B00FF;
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 15px;
-      z-index: 100;
-    }
+    #placeButton { right: 20px; }
+    #mineButton { right: 100px; }
     .joystick {
-      position: absolute;
-      width: 115px;
-      height: 115px;
-      background: rgba(139, 0, 255, 0.3);
-      border-radius: 50%;
-      border: 2px solid #8B00FF;
-      z-index: 100;
+      position: absolute; width: 115px; height: 115px;
+      background: rgba(139, 0, 255, 0.3); border-radius: 50%;
+      border: 2px solid #8B00FF; z-index: 100;
     }
-    #moveJoystick {
-      bottom: 20px;
-      right: 20px;
-    }
-    #lookJoystick {
-      bottom: 20px;
-      left: 20px;
-    }
+    #moveJoystick { bottom: 20px; right: 20px; }
+    #lookJoystick { bottom: 20px; left: 20px; }
     .joystick-inner {
-      position: absolute;
-      width: 38px;
-      height: 38px;
-      background: rgba(255, 0, 255, 0.8);
-      border-radius: 50%;
-      border: none;
-      top: 38.5px;
-      left: 38.5px;
-      touch-action: none;
+      position: absolute; width: 38px; height: 38px;
+      background: rgba(255, 0, 255, 0.8); border-radius: 50%;
+      top: 38.5px; left: 38.5px; touch-action: none;
     }
     #crosshair {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 100;
+      position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+      transform: translate(-50%, -50%); pointer-events: none; z-index: 100;
     }
     #crosshair::before, #crosshair::after {
-      content: '';
-      position: absolute;
-      background: rgba(255, 105, 0, 0.8);
+      content: ''; position: absolute; background: rgba(255, 105, 0, 0.8);
     }
-    #crosshair::before {
-      width: 2px;
-      height: 20px;
-      left: 9px;
-      top: 0;
-    }
-    #crosshair::after {
-      width: 20px;
-      height: 2px;
-      left: 0;
-      top: 9px;
-    }
+    #crosshair::before { width: 2px; height: 20px; left: 9px; top: 0; }
+    #crosshair::after { width: 20px; height: 2px; left: 0; top: 9px; }
   </style>
 </head>
 <body>
-  <div id="version">v0.3</div>
+  <div id="version">v0.4</div>
   <button id="mineButton">Mine</button>
   <button id="placeButton">Place</button>
   <div id="crosshair"></div>
-  <div class="joystick" id="moveJoystick">
-    <div class="joystick-inner" id="moveJoystickInner"></div>
-  </div>
-  <div class="joystick" id="lookJoystick">
-    <div class="joystick-inner" id="lookJoystickInner"></div>
-  </div>
+  <div class="joystick" id="moveJoystick"><div class="joystick-inner" id="moveJoystickInner"></div></div>
+  <div class="joystick" id="lookJoystick"><div class="joystick-inner" id="lookJoystickInner"></div></div>
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
   <script>
-    // =============================================
-    // 1. Setup & Imports
-    // =============================================
-    let scene, camera, renderer, controls;
-    let raycaster, cursorCube, plane, cubes = [];
-    let moveJoystickActive = false, lookJoystickActive = false;
-    let moveJoystick = { x: 0, y: 0 };
-    let lookJoystick = { x: 0, y: 0 };
-    const velocity = new THREE.Vector3();
-    const direction = new THREE.Vector3();
-    const GRAVITY = -0.01;
-    const PLANE_SIZE = 20;
-    const GRID_SIZE = 1;
-
-    // Cube colors in violet/magenta/burgundy/scarlet range
-    const cubeColors = [
-      0x8B00FF, // Violet
-      0xFF00FF, // Magenta
-      0x800020, // Burgundy
-      0xFF2400, // Scarlet
-      0x9400D3, // Dark Violet
-      0x9932CC, // Dark Orchid
-      0x8A2BE2, // Blue Violet
-      0xDC143C  // Crimson
-    ];
-
-    // =============================================
-    // 2. Scene & Renderer
-    // =============================================
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
 
-    // =============================================
-    // 3. Camera & Lighting
-    // =============================================
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Camera Controls
+    const controls = new THREE.PointerLockControls(camera, document.body);
     camera.position.y = 5;
 
+    // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     scene.add(ambientLight);
-
     const directionalLight = new THREE.DirectionalLight(0x8B00FF, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
-    // =============================================
-    // 4. Grid & Base Plane
-    // =============================================
-    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0x8B00FF, 0x8B00FF);
+    // Grid & Plane
+    const gridHelper = new THREE.GridHelper(20, 20, 0x8B00FF, 0x8B00FF);
     scene.add(gridHelper);
-
-    const planeGeometry = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE);
-    const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4B0082,
-      side: THREE.DoubleSide,
-    });
-    plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    plane.rotation.x = -Math.PI / 2;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshStandardMaterial({ color: 0x4B0082, side: THREE.DoubleSide })
+    );
+    plane.rotation.x = -Math.PI/2;
     scene.add(plane);
 
-    // =============================================
-    // 5. Joysticks (Movement & Look)
-    // =============================================
-    controls = new THREE.PointerLockControls(camera, document.body);
+    // Joystick Controls
+    let moveJoystick = { x: 0, y: 0 };
+    let lookJoystick = { x: 0, y: 0 };
+    let moveActive = false;
+    let lookActive = false;
 
-    // Movement Joystick (Right)
+    function setupJoystick(joystickElement, innerElement, isMoveJoystick) {
+      let active = false;
+      joystickElement.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        active = true;
+        updateJoystick(e.touches[0], innerElement, joystickElement, isMoveJoystick);
+      });
+      joystickElement.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (active) updateJoystick(e.touches[0], innerElement, joystickElement, isMoveJoystick);
+      });
+      joystickElement.addEventListener('touchend', () => {
+        active = false;
+        innerElement.style.left = '38.5px';
+        innerElement.style.top = '38.5px';
+        if (isMoveJoystick) {
+          moveJoystick = { x: 0, y: 0 };
+          moveActive = false;
+        } else {
+          lookJoystick = { x: 0, y: 0 };
+          lookActive = false;
+        }
+      });
+      return () => active;
+    }
+
     const moveJoystickElement = document.getElementById('moveJoystick');
     const moveJoystickInner = document.getElementById('moveJoystickInner');
-
-    moveJoystickElement.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      moveJoystickActive = true;
-      updateJoystickPosition(e.touches[0], moveJoystickInner, moveJoystickElement);
-    });
-    moveJoystickElement.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      updateJoystickPosition(e.touches[0], moveJoystickInner, moveJoystickElement);
-    });
-    moveJoystickElement.addEventListener('touchend', () => {
-      moveJoystickActive = false;
-      moveJoystickInner.style.left = '38.5px';
-      moveJoystickInner.style.top = '38.5px';
-      moveJoystick = { x: 0, y: 0 };
-    });
-
-    // Look Joystick (Left)
     const lookJoystickElement = document.getElementById('lookJoystick');
     const lookJoystickInner = document.getElementById('lookJoystickInner');
 
-    lookJoystickElement.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      lookJoystickActive = true;
-      updateJoystickPosition(e.touches[0], lookJoystickInner, lookJoystickElement);
-    });
-    lookJoystickElement.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      updateJoystickPosition(e.touches[0], lookJoystickInner, lookJoystickElement);
-    });
-    lookJoystickElement.addEventListener('touchend', () => {
-      lookJoystickActive = false;
-      lookJoystickInner.style.left = '38.5px';
-      lookJoystickInner.style.top = '38.5px';
-      lookJoystick = { x: 0, y: 0 };
-    });
+    moveActive = setupJoystick(moveJoystickElement, moveJoystickInner, true);
+    lookActive = setupJoystick(lookJoystickElement, lookJoystickInner, false);
 
-    function updateJoystickPosition(touch, inner, outer) {
+    function updateJoystick(touch, inner, outer, isMoveJoystick) {
       const rect = outer.getBoundingClientRect();
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-      const maxDistance = rect.width / 2 - inner.offsetWidth / 2;
+      const centerX = rect.width/2;
+      const centerY = rect.height/2;
+      const maxDistance = rect.width/2 - inner.offsetWidth/2;
 
+      const distance = Math.sqrt((x-centerX)**2 + (y-centerY)**2);
       if (distance > maxDistance) {
-        const angle = Math.atan2(y - centerY, x - centerX);
-        inner.style.left = `${centerX + Math.cos(angle) * maxDistance - inner.offsetWidth / 2}px`;
-        inner.style.top = `${centerY + Math.sin(angle) * maxDistance - inner.offsetHeight / 2}px`;
+        const angle = Math.atan2(y-centerY, x-centerX);
+        inner.style.left = `${centerX + Math.cos(angle)*maxDistance - inner.offsetWidth/2}px`;
+        inner.style.top = `${centerY + Math.sin(angle)*maxDistance - inner.offsetHeight/2}px`;
       } else {
-        inner.style.left = `${x - inner.offsetWidth / 2}px`;
-        inner.style.top = `${y - inner.offsetHeight / 2}px`;
+        inner.style.left = `${x - inner.offsetWidth/2}px`;
+        inner.style.top = `${y - inner.offsetHeight/2}px`;
       }
 
-      if (outer.id === 'moveJoystick') {
-        moveJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+      const joystick = {
+        x: (parseFloat(inner.style.left) + inner.offsetWidth/2 - centerX)/maxDistance,
+        y: (parseFloat(inner.style.top) + inner.offsetHeight/2 - centerY)/maxDistance
+      };
+
+      if (isMoveJoystick) {
+        moveJoystick = joystick;
+        moveActive = true;
       } else {
-        lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        lookJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+        lookJoystick = joystick;
+        lookActive = true;
       }
     }
 
-    // =============================================
-    // 6. Gravity & Movement
-    // =============================================
+    // Movement & Look
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const GRAVITY = -0.01;
+
     function updateMovement() {
-      if (moveJoystickActive) {
-        direction.z = -moveJoystick.y;
+      if (moveActive) {
         direction.x = moveJoystick.x;
+        direction.z = -moveJoystick.y;
       } else {
-        direction.z = 0;
         direction.x = 0;
+        direction.z = 0;
       }
       direction.normalize();
 
@@ -289,90 +170,70 @@ TABLE OF CONTENTS (TOC)
       controls.moveForward(velocity.z);
       camera.position.y += velocity.y;
 
-      // Clamp to plane boundaries
-      camera.position.x = Math.max(-PLANE_SIZE/2, Math.min(PLANE_SIZE/2, camera.position.x));
-      camera.position.z = Math.max(-PLANE_SIZE/2, Math.min(PLANE_SIZE/2, camera.position.z));
-
+      // Boundary clamping
+      camera.position.x = Math.max(-10, Math.min(10, camera.position.x));
+      camera.position.z = Math.max(-10, Math.min(10, camera.position.z));
       if (camera.position.y < 0.5) {
         camera.position.y = 0.5;
         velocity.y = 0;
       }
     }
 
-    // =============================================
-    // Look Controls (Pitch/Yaw Only)
-    // =============================================
     function updateLook() {
-      if (lookJoystickActive) {
-        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
-        camera.rotation.x += lookJoystick.y * 0.02; // Pitch (up/down)
-        // Clamp pitch to avoid over-rotation
-        camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
-        // Reset roll to zero (no roll)
-        camera.rotation.z = 0;
+      if (lookActive) {
+        // Pure pitch/yaw, NO ROLL
+        camera.rotation.y -= lookJoystick.x * 0.02;  // Yaw
+        camera.rotation.x -= lookJoystick.y * 0.02;  // Pitch
+        camera.rotation.x = Math.max(-Math.PI/3, Math.min(Math.PI/3, camera.rotation.x));
+        camera.rotation.z = 0;  // Force zero roll
       }
     }
 
-    // =============================================
-    // 7. Raycaster & Red Cube Cursor (Grid-Aligned & Vertical Snapping)
-    // =============================================
-    raycaster = new THREE.Raycaster();
-    const cursorCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const cursorCubeEdges = new THREE.EdgesGeometry(cursorCubeGeometry);
-    const cursorCubeLine = new THREE.LineSegments(
-      cursorCubeEdges,
-      new THREE.LineBasicMaterial({ color: 0xff0000 })
+    // Cursor & Placement
+    const raycaster = new THREE.Raycaster();
+    const cursorCube = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
     );
-    cursorCubeLine.visible = false;
-    scene.add(cursorCubeLine);
+    cursorCube.visible = false;
+    scene.add(cursorCube);
 
     function updateCursor() {
       raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      const intersects = raycaster.intersectObjects([plane, ...cubes]);
+      const intersects = raycaster.intersectObjects([plane]);
       if (intersects.length > 0) {
         const intersect = intersects[0];
-        // Snap cursor to grid (corner on intersection)
-        const snappedX = Math.floor(intersect.point.x) + 0.5;
-        const snappedZ = Math.floor(intersect.point.z) + 0.5;
-        // Snap vertically in steps of 1 unit
-        const snappedY = Math.round(intersect.point.y);
-        cursorCubeLine.position.set(snappedX, snappedY, snappedZ);
-        cursorCubeLine.visible = true;
+        // Snap to grid (corner alignment)
+        const snappedX = Math.floor(intersect.point.x + 0.5);
+        const snappedZ = Math.floor(intersect.point.z + 0.5);
+        const snappedY = Math.floor(intersect.point.y + 0.5);
+        cursorCube.position.set(snappedX, snappedY, snappedZ);
+        cursorCube.visible = true;
       } else {
-        cursorCubeLine.visible = false;
+        cursorCube.visible = false;
       }
     }
 
-    // =============================================
-    // 8. Crosshair
-    // =============================================
-    // Already in HTML/CSS
+    // Cube Colors
+    const cubeColors = [
+      0x8B00FF, 0xFF00FF, 0x800020, 0xFF2400,
+      0x9400D3, 0x9932CC, 0x8A2BE2, 0xDC143C
+    ];
 
-    // =============================================
-    // 9. Cube Placement/Removal (Color Variety & Grid Snapping)
-    // =============================================
     document.getElementById('placeButton').addEventListener('click', () => {
-      if (cursorCubeLine.visible) {
+      if (cursorCube.visible) {
         const cube = new THREE.Mesh(
           new THREE.BoxGeometry(1, 1, 1),
           new THREE.MeshStandardMaterial({
             color: cubeColors[Math.floor(Math.random() * cubeColors.length)]
           })
         );
-        cube.position.copy(cursorCubeLine.position);
+        cube.position.copy(cursorCube.position);
         scene.add(cube);
-        cubes.push(cube);
       }
     });
 
-    // =============================================
-    // 10. UI & Version Display
-    // =============================================
-    // Already in HTML
-
-    // =============================================
-    // 11. Animation Loop
-    // =============================================
+    // Animation Loop
     function animate() {
       requestAnimationFrame(animate);
       updateMovement();
@@ -382,9 +243,8 @@ TABLE OF CONTENTS (TOC)
     }
     animate();
 
-    // Handle window resize
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = window.innerWidth/window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
