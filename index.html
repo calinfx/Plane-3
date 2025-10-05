@@ -6,7 +6,7 @@ TABLE OF CONTENTS (TOC)
 2. Scene & Renderer
 3. Camera & Lighting
 4. Grid & Base Plane
-5. Joysticks (Movement & Camera)
+5. Joysticks (Movement & Look)
 6. Gravity & Movement
 7. Raycaster & Red Cube Cursor
 8. Cube Placement/Removal
@@ -49,42 +49,42 @@ TABLE OF CONTENTS (TOC)
     }
     .joystick {
       position: absolute;
-      width: 100px;
-      height: 100px;
+      width: 115px; /* 15% larger */
+      height: 115px; /* 15% larger */
       background: rgba(170, 85, 255, 0.3);
       border-radius: 50%;
       border: 2px solid #aa55ff;
       z-index: 100;
     }
-    #leftJoystick {
+    #moveJoystick {
       bottom: 20px;
-      left: 20px;
+      right: 20px; /* Movement joystick on the right */
     }
-    #rightJoystick {
+    #lookJoystick {
       bottom: 20px;
-      right: 120px;
+      left: 20px; /* Look joystick on the left */
     }
     .joystick-inner {
       position: absolute;
-      width: 50px;
-      height: 50px;
-      background: rgba(170, 85, 255, 0.6);
+      width: 64px; /* 15% larger (50px * 1.15 ~ 57.5, rounded up) */
+      height: 64px; /* 15% larger */
+      background: rgba(51, 0, 68, 0.8); /* Dark purple, no white/gray */
       border-radius: 50%;
-      border: 1px solid #fff;
-      top: 25px;
-      left: 25px;
+      border: none; /* Removed white border */
+      top: 25.5px; /* Adjusted for new size */
+      left: 25.5px; /* Adjusted for new size */
       touch-action: none;
     }
   </style>
 </head>
 <body>
-  <div id="version">v0.876</div>
+  <div id="version">v0.1</div>
   <button id="placeButton">Place</button>
-  <div class="joystick" id="leftJoystick">
-    <div class="joystick-inner" id="leftJoystickInner"></div>
+  <div class="joystick" id="moveJoystick">
+    <div class="joystick-inner" id="moveJoystickInner"></div>
   </div>
-  <div class="joystick" id="rightJoystick">
-    <div class="joystick-inner" id="rightJoystickInner"></div>
+  <div class="joystick" id="lookJoystick">
+    <div class="joystick-inner" id="lookJoystickInner"></div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
@@ -94,10 +94,9 @@ TABLE OF CONTENTS (TOC)
     // =============================================
     let scene, camera, renderer, controls;
     let raycaster, cursorCube, plane, cubes = [];
-    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-    let leftJoystickActive = false, rightJoystickActive = false;
-    let leftJoystick = { x: 0, y: 0 };
-    let rightJoystick = { x: 0, y: 0 };
+    let moveJoystickActive = false, lookJoystickActive = false;
+    let moveJoystick = { x: 0, y: 0 };
+    let lookJoystick = { x: 0, y: 0 };
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const GRAVITY = -0.01;
@@ -142,48 +141,48 @@ TABLE OF CONTENTS (TOC)
     scene.add(plane);
 
     // =============================================
-    // 5. Joysticks (Movement & Camera)
+    // 5. Joysticks (Movement & Look)
     // =============================================
     controls = new THREE.PointerLockControls(camera, document.body);
 
-    // Left Joystick (Movement)
-    const leftJoystickElement = document.getElementById('leftJoystick');
-    const leftJoystickInner = document.getElementById('leftJoystickInner');
+    // Movement Joystick (Right)
+    const moveJoystickElement = document.getElementById('moveJoystick');
+    const moveJoystickInner = document.getElementById('moveJoystickInner');
 
-    leftJoystickElement.addEventListener('touchstart', (e) => {
+    moveJoystickElement.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      leftJoystickActive = true;
-      updateJoystickPosition(e.touches[0], leftJoystickInner, leftJoystickElement);
+      moveJoystickActive = true;
+      updateJoystickPosition(e.touches[0], moveJoystickInner, moveJoystickElement);
     });
-    leftJoystickElement.addEventListener('touchmove', (e) => {
+    moveJoystickElement.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      updateJoystickPosition(e.touches[0], leftJoystickInner, leftJoystickElement);
+      updateJoystickPosition(e.touches[0], moveJoystickInner, moveJoystickElement);
     });
-    leftJoystickElement.addEventListener('touchend', () => {
-      leftJoystickActive = false;
-      leftJoystickInner.style.left = '25px';
-      leftJoystickInner.style.top = '25px';
-      leftJoystick = { x: 0, y: 0 };
+    moveJoystickElement.addEventListener('touchend', () => {
+      moveJoystickActive = false;
+      moveJoystickInner.style.left = '25.5px';
+      moveJoystickInner.style.top = '25.5px';
+      moveJoystick = { x: 0, y: 0 };
     });
 
-    // Right Joystick (Camera)
-    const rightJoystickElement = document.getElementById('rightJoystick');
-    const rightJoystickInner = document.getElementById('rightJoystickInner');
+    // Look Joystick (Left)
+    const lookJoystickElement = document.getElementById('lookJoystick');
+    const lookJoystickInner = document.getElementById('lookJoystickInner');
 
-    rightJoystickElement.addEventListener('touchstart', (e) => {
+    lookJoystickElement.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      rightJoystickActive = true;
-      updateJoystickPosition(e.touches[0], rightJoystickInner, rightJoystickElement);
+      lookJoystickActive = true;
+      updateJoystickPosition(e.touches[0], lookJoystickInner, lookJoystickElement);
     });
-    rightJoystickElement.addEventListener('touchmove', (e) => {
+    lookJoystickElement.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      updateJoystickPosition(e.touches[0], rightJoystickInner, rightJoystickElement);
+      updateJoystickPosition(e.touches[0], lookJoystickInner, lookJoystickElement);
     });
-    rightJoystickElement.addEventListener('touchend', () => {
-      rightJoystickActive = false;
-      rightJoystickInner.style.left = '25px';
-      rightJoystickInner.style.top = '25px';
-      rightJoystick = { x: 0, y: 0 };
+    lookJoystickElement.addEventListener('touchend', () => {
+      lookJoystickActive = false;
+      lookJoystickInner.style.left = '25.5px';
+      lookJoystickInner.style.top = '25.5px';
+      lookJoystick = { x: 0, y: 0 };
     });
 
     function updateJoystickPosition(touch, inner, outer) {
@@ -204,12 +203,12 @@ TABLE OF CONTENTS (TOC)
         inner.style.top = `${y - inner.offsetHeight / 2}px`;
       }
 
-      if (outer.id === 'leftJoystick') {
-        leftJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        leftJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+      if (outer.id === 'moveJoystick') {
+        moveJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
+        moveJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       } else {
-        rightJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        rightJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+        lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
+        lookJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       }
     }
 
@@ -217,9 +216,10 @@ TABLE OF CONTENTS (TOC)
     // 6. Gravity & Movement
     // =============================================
     function updateMovement() {
-      if (leftJoystickActive) {
-        direction.z = -leftJoystick.y;
-        direction.x = leftJoystick.x;
+      if (moveJoystickActive) {
+        // Forward/backward flipped (Y-axis inverted)
+        direction.z = moveJoystick.y;
+        direction.x = moveJoystick.x;
       }
       direction.normalize();
 
@@ -234,6 +234,18 @@ TABLE OF CONTENTS (TOC)
       if (camera.position.y < 0.5) {
         camera.position.y = 0.5;
         velocity.y = 0;
+      }
+    }
+
+    // =============================================
+    // Look Controls (Pitch/Yaw)
+    // =============================================
+    function updateLook() {
+      if (lookJoystickActive) {
+        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
+        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch (up/down)
+        // Clamp pitch to avoid over-rotation
+        camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
       }
     }
 
@@ -285,6 +297,7 @@ TABLE OF CONTENTS (TOC)
     function animate() {
       requestAnimationFrame(animate);
       updateMovement();
+      updateLook();
       updateCursor();
       renderer.render(scene, camera);
     }
