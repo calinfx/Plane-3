@@ -8,7 +8,7 @@ TABLE OF CONTENTS (TOC)
 4. Grid & Base Plane
 5. Joysticks (Movement & Look)
 6. Gravity & Movement
-7. Raycaster & Red Cube Cursor (Grid Snapping)
+7. Raycaster & Red Cube Cursor (Grid-Aligned & Vertical Snapping)
 8. Crosshair
 9. Cube Placement/Removal (Color Variety & Grid Snapping)
 10. UI & Version Display
@@ -40,6 +40,18 @@ TABLE OF CONTENTS (TOC)
       position: absolute;
       bottom: 130px;
       right: 20px;
+      background: #8B00FF;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 15px;
+      z-index: 100;
+    }
+    #mineButton {
+      position: absolute;
+      bottom: 130px;
+      right: 100px;
       background: #8B00FF;
       color: #000;
       border: none;
@@ -106,7 +118,8 @@ TABLE OF CONTENTS (TOC)
   </style>
 </head>
 <body>
-  <div id="version">v0.2</div>
+  <div id="version">v0.3</div>
+  <button id="mineButton">Mine</button>
   <button id="placeButton">Place</button>
   <div id="crosshair"></div>
   <div class="joystick" id="moveJoystick">
@@ -251,7 +264,7 @@ TABLE OF CONTENTS (TOC)
         moveJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       } else {
         lookJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
-        lookJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance; // Flipped
+        lookJoystick.y = (parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
       }
     }
 
@@ -292,7 +305,7 @@ TABLE OF CONTENTS (TOC)
     function updateLook() {
       if (lookJoystickActive) {
         camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
-        camera.rotation.x += lookJoystick.y * 0.02; // Pitch (up/down) - Flipped
+        camera.rotation.x += lookJoystick.y * 0.02; // Pitch (up/down)
         // Clamp pitch to avoid over-rotation
         camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
         // Reset roll to zero (no roll)
@@ -301,7 +314,7 @@ TABLE OF CONTENTS (TOC)
     }
 
     // =============================================
-    // 7. Raycaster & Red Cube Cursor (Grid Snapping)
+    // 7. Raycaster & Red Cube Cursor (Grid-Aligned & Vertical Snapping)
     // =============================================
     raycaster = new THREE.Raycaster();
     const cursorCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -318,10 +331,12 @@ TABLE OF CONTENTS (TOC)
       const intersects = raycaster.intersectObjects([plane, ...cubes]);
       if (intersects.length > 0) {
         const intersect = intersects[0];
-        // Snap cursor to grid
-        const snappedX = Math.round(intersect.point.x / GRID_SIZE) * GRID_SIZE;
-        const snappedZ = Math.round(intersect.point.z / GRID_SIZE) * GRID_SIZE;
-        cursorCubeLine.position.set(snappedX, intersect.point.y + 0.5, snappedZ);
+        // Snap cursor to grid (corner on intersection)
+        const snappedX = Math.floor(intersect.point.x) + 0.5;
+        const snappedZ = Math.floor(intersect.point.z) + 0.5;
+        // Snap vertically in steps of 1 unit
+        const snappedY = Math.round(intersect.point.y);
+        cursorCubeLine.position.set(snappedX, snappedY, snappedZ);
         cursorCubeLine.visible = true;
       } else {
         cursorCubeLine.visible = false;
