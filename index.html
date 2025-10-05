@@ -1,35 +1,91 @@
-
-1. **Setup & Imports**
-2. **Scene & Renderer**
-3. **Camera & Lighting**
-4. **Grid & Base Plane**
-5. **Joystick Controls (FPS Style)**
-6. **Gravity & Movement**
-7. **Raycaster & Red Cube Cursor**
-8. **Cube Placement/Removal**
-9. **UI & Version Display**
-10. **Animation Loop**
-
----
-
+/*
+=============================================
+TABLE OF CONTENTS (TOC)
+=============================================
+1. Setup & Imports
+2. Scene & Renderer
+3. Camera & Lighting
+4. Grid & Base Plane
+5. Joysticks (Movement & Camera)
+6. Gravity & Movement
+7. Raycaster & Red Cube Cursor
+8. Cube Placement/Removal
+9. UI & Version Display
+10. Animation Loop
+*/
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>3D Cube Builder</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #000; }
-    #version { position: absolute; top: 10px; left: 10px; color: #aa55ff; font-family: Arial, sans-serif; }
-    #placeButton { position: absolute; bottom: 20px; right: 20px; background: #aa55ff; color: #000; border: none; padding: 10px; font-weight: bold; }
-    #joystickArea { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 200px; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+    }
+    #version {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #aa55ff;
+      font-family: Arial, sans-serif;
+      z-index: 100;
+    }
+    #placeButton {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: #aa55ff;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 5px;
+      z-index: 100;
+    }
+    .joystick {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: rgba(170, 85, 255, 0.3);
+      border-radius: 50%;
+      border: 2px solid #aa55ff;
+      z-index: 100;
+    }
+    #leftJoystick {
+      bottom: 20px;
+      left: 20px;
+    }
+    #rightJoystick {
+      bottom: 20px;
+      right: 120px;
+    }
+    .joystick-inner {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: rgba(170, 85, 255, 0.6);
+      border-radius: 50%;
+      border: 1px solid #fff;
+      top: 25px;
+      left: 25px;
+      touch-action: none;
+    }
   </style>
 </head>
 <body>
   <div id="version">v0.76</div>
   <button id="placeButton">Place</button>
-  <div id="joystickArea"></div>
+  <div class="joystick" id="leftJoystick">
+    <div class="joystick-inner" id="leftJoystickInner"></div>
+  </div>
+  <div class="joystick" id="rightJoystick">
+    <div class="joystick-inner" id="rightJoystickInner"></div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
   <script>
@@ -39,6 +95,9 @@
     let scene, camera, renderer, controls;
     let raycaster, cursorCube, plane, cubes = [];
     let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let leftJoystickActive = false, rightJoystickActive = false;
+    let leftJoystick = { x: 0, y: 0 };
+    let rightJoystick = { x: 0, y: 0 };
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const GRAVITY = -0.01;
@@ -77,46 +136,90 @@
     const planeMaterial = new THREE.MeshStandardMaterial({
       color: 0x220033,
       side: THREE.DoubleSide,
-      // Uncomment and replace with your texture path:
-      // map: new THREE.TextureLoader().load('path/to/your/texture.jpg')
     });
     plane = new THREE.Mesh(planeGeometry, planeMaterial);
     plane.rotation.x = -Math.PI / 2;
     scene.add(plane);
 
     // =============================================
-    // 5. Joystick Controls (FPS Style)
+    // 5. Joysticks (Movement & Camera)
     // =============================================
     controls = new THREE.PointerLockControls(camera, document.body);
 
-    // Simple joystick simulation (replace with a library if needed)
-    const leftJoystick = { x: 0, y: 0, pressed: false };
-    document.getElementById('joystickArea').addEventListener('touchstart', (e) => {
-      leftJoystick.pressed = true;
-      leftJoystick.x = (e.touches[0].clientX - window.innerWidth/2) / 100;
-      leftJoystick.y = (e.touches[0].clientY - window.innerHeight + 100) / 100;
-    });
-    document.getElementById('joystickArea').addEventListener('touchmove', (e) => {
+    // Left Joystick (Movement)
+    const leftJoystickElement = document.getElementById('leftJoystick');
+    const leftJoystickInner = document.getElementById('leftJoystickInner');
+
+    leftJoystickElement.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      leftJoystick.x = (e.touches[0].clientX - window.innerWidth/2) / 100;
-      leftJoystick.y = (e.touches[0].clientY - window.innerHeight + 100) / 100;
+      leftJoystickActive = true;
+      updateJoystickPosition(e.touches[0], leftJoystickInner, leftJoystickElement);
     });
-    document.getElementById('joystickArea').addEventListener('touchend', () => {
-      leftJoystick.pressed = false;
-      leftJoystick.x = 0;
-      leftJoystick.y = 0;
+    leftJoystickElement.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      updateJoystickPosition(e.touches[0], leftJoystickInner, leftJoystickElement);
     });
+    leftJoystickElement.addEventListener('touchend', () => {
+      leftJoystickActive = false;
+      leftJoystickInner.style.left = '25px';
+      leftJoystickInner.style.top = '25px';
+      leftJoystick = { x: 0, y: 0 };
+    });
+
+    // Right Joystick (Camera)
+    const rightJoystickElement = document.getElementById('rightJoystick');
+    const rightJoystickInner = document.getElementById('rightJoystickInner');
+
+    rightJoystickElement.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      rightJoystickActive = true;
+      updateJoystickPosition(e.touches[0], rightJoystickInner, rightJoystickElement);
+    });
+    rightJoystickElement.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      updateJoystickPosition(e.touches[0], rightJoystickInner, rightJoystickElement);
+    });
+    rightJoystickElement.addEventListener('touchend', () => {
+      rightJoystickActive = false;
+      rightJoystickInner.style.left = '25px';
+      rightJoystickInner.style.top = '25px';
+      rightJoystick = { x: 0, y: 0 };
+    });
+
+    function updateJoystickPosition(touch, inner, outer) {
+      const rect = outer.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+      const maxDistance = rect.width / 2 - inner.offsetWidth / 2;
+
+      if (distance > maxDistance) {
+        const angle = Math.atan2(y - centerY, x - centerX);
+        inner.style.left = `${centerX + Math.cos(angle) * maxDistance - inner.offsetWidth / 2}px`;
+        inner.style.top = `${centerY + Math.sin(angle) * maxDistance - inner.offsetHeight / 2}px`;
+      } else {
+        inner.style.left = `${x - inner.offsetWidth / 2}px`;
+        inner.style.top = `${y - inner.offsetHeight / 2}px`;
+      }
+
+      if (outer.id === 'leftJoystick') {
+        leftJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
+        leftJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+      } else {
+        rightJoystick.x = (parseInt(inner.style.left) + inner.offsetWidth / 2 - centerX) / maxDistance;
+        rightJoystick.y = -(parseInt(inner.style.top) + inner.offsetHeight / 2 - centerY) / maxDistance;
+      }
+    }
 
     // =============================================
     // 6. Gravity & Movement
     // =============================================
     function updateMovement() {
-      if (leftJoystick.pressed) {
+      if (leftJoystickActive) {
         direction.z = -leftJoystick.y;
         direction.x = leftJoystick.x;
-      } else {
-        direction.z = Number(moveForward) - Number(moveBackward);
-        direction.x = Number(moveRight) - Number(moveLeft);
       }
       direction.normalize();
 
@@ -138,10 +241,10 @@
     // 7. Raycaster & Red Cube Cursor
     // =============================================
     raycaster = new THREE.Raycaster();
-    cursorCube = new THREE.Mesh(
-      new THREE.BoxGeometry(1.05, 0.05, 1.05),
-      new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
-    );
+    const cursorCubeGeometry = new THREE.BoxGeometry(1.05, 1.05, 1.05);
+    const cursorCubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    cursorCube = new THREE.Mesh(cursorCubeGeometry, cursorCubeMaterial);
+    cursorCube.visible = false;
     scene.add(cursorCube);
 
     function updateCursor() {
@@ -150,7 +253,9 @@
       if (intersects.length > 0) {
         const intersect = intersects[0];
         cursorCube.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
-        cursorCube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal);
+        cursorCube.visible = true;
+      } else {
+        cursorCube.visible = false;
       }
     }
 
@@ -158,13 +263,15 @@
     // 8. Cube Placement/Removal
     // =============================================
     document.getElementById('placeButton').addEventListener('click', () => {
-      const cube = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({ color: 0xaa55ff })
-      );
-      cube.position.copy(cursorCube.position);
-      scene.add(cube);
-      cubes.push(cube);
+      if (cursorCube.visible) {
+        const cube = new THREE.Mesh(
+          new THREE.BoxGeometry(1, 1, 1),
+          new THREE.MeshStandardMaterial({ color: 0xaa55ff })
+        );
+        cube.position.copy(cursorCube.position);
+        scene.add(cube);
+        cubes.push(cube);
+      }
     });
 
     // =============================================
