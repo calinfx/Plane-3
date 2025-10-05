@@ -32,29 +32,29 @@ TABLE OF CONTENTS (TOC)
       position: absolute;
       top: 10px;
       left: 10px;
-      color: #8B00FF; /* Proper violet */
+      color: #8B00FF;
       font-family: Arial, sans-serif;
       z-index: 100;
     }
     #placeButton {
       position: absolute;
-      bottom: 130px; /* Above right joystick */
+      bottom: 130px;
       right: 20px;
-      background: #8B00FF; /* Proper violet */
+      background: #8B00FF;
       color: #000;
       border: none;
       padding: 10px 20px;
       font-weight: bold;
-      border-radius: 15px; /* Rounded corners */
+      border-radius: 15px;
       z-index: 100;
     }
     .joystick {
       position: absolute;
       width: 115px;
       height: 115px;
-      background: rgba(139, 0, 255, 0.3); /* Proper violet */
+      background: rgba(139, 0, 255, 0.3);
       border-radius: 50%;
-      border: 2px solid #8B00FF; /* Proper violet */
+      border: 2px solid #8B00FF;
       z-index: 100;
     }
     #moveJoystick {
@@ -69,7 +69,7 @@ TABLE OF CONTENTS (TOC)
       position: absolute;
       width: 38px;
       height: 38px;
-      background: rgba(255, 105, 0, 0.8); /* Orange */
+      background: rgba(255, 0, 255, 0.8);
       border-radius: 50%;
       border: none;
       top: 38.5px;
@@ -89,7 +89,7 @@ TABLE OF CONTENTS (TOC)
     #crosshair::before, #crosshair::after {
       content: '';
       position: absolute;
-      background: rgba(255, 105, 0, 0.8); /* Orange */
+      background: rgba(255, 105, 0, 0.8);
     }
     #crosshair::before {
       width: 2px;
@@ -106,7 +106,7 @@ TABLE OF CONTENTS (TOC)
   </style>
 </head>
 <body>
-  <div id="version">v0.1</div>
+  <div id="version">v0.2</div>
   <button id="placeButton">Place</button>
   <div id="crosshair"></div>
   <div class="joystick" id="moveJoystick">
@@ -151,19 +151,19 @@ TABLE OF CONTENTS (TOC)
     const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0x8B00FF, 0.8); /* Proper violet */
+    const directionalLight = new THREE.DirectionalLight(0x8B00FF, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
     // =============================================
     // 4. Grid & Base Plane
     // =============================================
-    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0x8B00FF, 0x8B00FF); /* Proper violet */
+    const gridHelper = new THREE.GridHelper(PLANE_SIZE, PLANE_SIZE, 0x8B00FF, 0x8B00FF);
     scene.add(gridHelper);
 
     const planeGeometry = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4B0082, /* Proper violet */
+      color: 0x4B0082,
       side: THREE.DoubleSide,
     });
     plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -278,8 +278,8 @@ TABLE OF CONTENTS (TOC)
     // =============================================
     function updateLook() {
       if (lookJoystickActive) {
-        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw
-        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch
+        camera.rotation.y -= lookJoystick.x * 0.02; // Yaw (left/right)
+        camera.rotation.x -= lookJoystick.y * 0.02; // Pitch (up/down)
         // Clamp pitch to avoid over-rotation
         camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
         // Reset roll to zero (no roll)
@@ -305,6 +305,7 @@ TABLE OF CONTENTS (TOC)
       const intersects = raycaster.intersectObjects([plane, ...cubes]);
       if (intersects.length > 0) {
         const intersect = intersects[0];
+        // Position cursor cube fully above the surface
         cursorCubeLine.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
         cursorCubeLine.visible = true;
       } else {
@@ -324,7 +325,7 @@ TABLE OF CONTENTS (TOC)
       if (cursorCubeLine.visible) {
         const cube = new THREE.Mesh(
           new THREE.BoxGeometry(1, 1, 1),
-          new THREE.MeshStandardMaterial({ color: 0x8B00FF }) /* Proper violet */
+          new THREE.MeshStandardMaterial({ color: 0x8B00FF })
         );
         cube.position.copy(cursorCubeLine.position);
         scene.add(cube);
