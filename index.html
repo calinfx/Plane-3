@@ -1,260 +1,194 @@
+
+1. **Setup & Imports**
+2. **Scene & Renderer**
+3. **Camera & Lighting**
+4. **Grid & Base Plane**
+5. **Joystick Controls (FPS Style)**
+6. **Gravity & Movement**
+7. **Raycaster & Red Cube Cursor**
+8. **Cube Placement/Removal**
+9. **UI & Version Display**
+10. **Animation Loop**
+
+---
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Mobile Sandbox v0.6</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-            background: #000;
-        }
-        #joysticks {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            pointer-events: none;
-        }
-        .joystick {
-            width: 100px;
-            height: 100px;
-            background: rgba(60, 0, 60, 0.7);
-            border-radius: 50%;
-            pointer-events: auto;
-            touch-action: none;
-            border: 2px solid #9400d3;
-        }
-        #placeBtn {
-            position: absolute;
-            bottom: 130px;
-            right: 20px;
-            padding: 10px 15px;
-            background: #9400d3;
-            color: black;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        #version {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #9400d3;
-            font-size: 16px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Cube Builder</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    #version { position: absolute; top: 10px; left: 10px; color: #aa55ff; font-family: Arial, sans-serif; }
+    #placeButton { position: absolute; bottom: 20px; right: 20px; background: #aa55ff; color: #000; border: none; padding: 10px; font-weight: bold; }
+    #joystickArea { position: absolute; bottom: 20px; left: 20px; width: 300px; height: 200px; }
+  </style>
 </head>
 <body>
-    <div id="version">v0.76</div>
-    <button id="placeBtn">Place</button>
-    <div id="joysticks">
-        <div class="joystick" id="moveJoystick"></div>
-        <div class="joystick" id="lookJoystick"></div>
-    </div>
+  <div id="version">v0.76</div>
+  <button id="placeButton">Place</button>
+  <div id="joystickArea"></div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/PointerLockControls.js"></script>
+  <script>
+    // =============================================
+    // 1. Setup & Imports
+    // =============================================
+    let scene, camera, renderer, controls;
+    let raycaster, cursorCube, plane, cubes = [];
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const GRAVITY = -0.01;
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/renderers/CSS2DRenderer.js"></script>
+    // =============================================
+    // 2. Scene & Renderer
+    // =============================================
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
-    <script>
-        // Scene setup
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 10);
-        camera.lookAt(0, 0, 0);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000000);
-        document.body.appendChild(renderer.domElement);
+    // =============================================
+    // 3. Camera & Lighting
+    // =============================================
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.y = 5;
 
-        // Lighting
-        const light = new THREE.DirectionalLight(0x9400d3, 0.8);
-        light.position.set(1, 1, 1).normalize();
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x4b0082));
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    scene.add(ambientLight);
 
-        // Violet grid
-        const gridHelper = new THREE.GridHelper(20, 20, 0x9400d3, 0x9400d3);
-        scene.add(gridHelper);
+    const directionalLight = new THREE.DirectionalLight(0xaa55ff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
 
-        // Plane to keep camera on
-        const planeGeometry = new THREE.PlaneGeometry(20, 20);
-        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x9400d3, side: THREE.DoubleSide, visible: false });
-        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.rotation.x = -Math.PI / 2;
-        scene.add(plane);
+    // =============================================
+    // 4. Grid & Base Plane
+    // =============================================
+    const gridHelper = new THREE.GridHelper(20, 20, 0xaa55ff, 0xaa55ff);
+    scene.add(gridHelper);
 
-        // Label renderer
-const labelRenderer = new THREE.CSS2DRenderer();
-labelRenderer.setSize(window.innerWidth, window.innerHeight);
-labelRenderer.domElement.style.position = 'absolute';
-labelRenderer.domElement.style.top = '0';
-document.body.appendChild(labelRenderer.domElement);
+    const planeGeometry = new THREE.PlaneGeometry(20, 20);
+    const planeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x220033,
+      side: THREE.DoubleSide,
+      // Uncomment and replace with your texture path:
+      // map: new THREE.TextureLoader().load('path/to/your/texture.jpg')
+    });
+    plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.rotation.x = -Math.PI / 2;
+    scene.add(plane);
 
-// Create a label for the spinning cube
-const cubeLabel = document.createElement('div');
-cubeLabel.className = 'label';
-cubeLabel.textContent = 'Spinny Cube';
-cubeLabel.style.color = '#9400d3';
-cubeLabel.style.fontSize = '16px';
-const cubeLabelObject = new THREE.CSS2DObject(cubeLabel);
-cubeLabelObject.position.set(3, 2, 3); // Above the cube
-scene.add(cubeLabelObject);
+    // =============================================
+    // 5. Joystick Controls (FPS Style)
+    // =============================================
+    controls = new THREE.PointerLockControls(camera, document.body);
 
+    // Simple joystick simulation (replace with a library if needed)
+    const leftJoystick = { x: 0, y: 0, pressed: false };
+    document.getElementById('joystickArea').addEventListener('touchstart', (e) => {
+      leftJoystick.pressed = true;
+      leftJoystick.x = (e.touches[0].clientX - window.innerWidth/2) / 100;
+      leftJoystick.y = (e.touches[0].clientY - window.innerHeight + 100) / 100;
+    });
+    document.getElementById('joystickArea').addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      leftJoystick.x = (e.touches[0].clientX - window.innerWidth/2) / 100;
+      leftJoystick.y = (e.touches[0].clientY - window.innerHeight + 100) / 100;
+    });
+    document.getElementById('joystickArea').addEventListener('touchend', () => {
+      leftJoystick.pressed = false;
+      leftJoystick.x = 0;
+      leftJoystick.y = 0;
+    });
 
-        // Spinning cube
-const spinningCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-const spinningCubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-const spinningCube = new THREE.Mesh(spinningCubeGeometry, spinningCubeMaterial);
-spinningCube.position.set(3, 1, 3); // Place it near the player
-scene.add(spinningCube);
+    // =============================================
+    // 6. Gravity & Movement
+    // =============================================
+    function updateMovement() {
+      if (leftJoystick.pressed) {
+        direction.z = -leftJoystick.y;
+        direction.x = leftJoystick.x;
+      } else {
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+      }
+      direction.normalize();
 
+      velocity.x = direction.x * 0.1;
+      velocity.z = direction.z * 0.1;
+      velocity.y += GRAVITY;
 
-     // Cube placement preview (red edges only)
-const previewGeometry = new THREE.BoxGeometry(1.05, 1.05, 1.05);
-const edges = new THREE.EdgesGeometry(previewGeometry);
-const previewMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-const previewCube = new THREE.LineSegments(edges, previewMaterial);
-previewCube.visible = false;
-scene.add(previewCube);
+      controls.moveRight(velocity.x);
+      controls.moveForward(velocity.z);
+      camera.position.y += velocity.y;
 
+      if (camera.position.y < 0.5) {
+        camera.position.y = 0.5;
+        velocity.y = 0;
+      }
+    }
 
-        // Raycaster for grid intersection
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
+    // =============================================
+    // 7. Raycaster & Red Cube Cursor
+    // =============================================
+    raycaster = new THREE.Raycaster();
+    cursorCube = new THREE.Mesh(
+      new THREE.BoxGeometry(1.05, 0.05, 1.05),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+    );
+    scene.add(cursorCube);
 
-        // Joystick logic
-        const moveJoystick = document.getElementById('moveJoystick');
-        const lookJoystick = document.getElementById('lookJoystick');
-        let moveTouchId = null, lookTouchId = null;
-        let moveX = 0, moveZ = 0, lookX = 0, lookY = 0;
+    function updateCursor() {
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const intersects = raycaster.intersectObjects([plane, ...cubes]);
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        cursorCube.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
+        cursorCube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), intersect.face.normal);
+      }
+    }
 
-        moveJoystick.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            moveTouchId = e.touches[0].identifier;
-        }, { passive: false });
+    // =============================================
+    // 8. Cube Placement/Removal
+    // =============================================
+    document.getElementById('placeButton').addEventListener('click', () => {
+      const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({ color: 0xaa55ff })
+      );
+      cube.position.copy(cursorCube.position);
+      scene.add(cube);
+      cubes.push(cube);
+    });
 
-        moveJoystick.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = Array.from(e.touches).find(t => t.identifier === moveTouchId);
-            if (touch) {
-                const rect = moveJoystick.getBoundingClientRect();
-                const x = (touch.clientX - rect.left) / rect.width;
-                const y = (touch.clientY - rect.top) / rect.height;
-                moveX = (x - 0.5) * 2;
-                moveZ = (y - 0.5) * -2; // Forward/Backward (correct)
-            }
-        }, { passive: false });
+    // =============================================
+    // 9. UI & Version Display
+    // =============================================
+    // Already in HTML
 
-        moveJoystick.addEventListener('touchend', (e) => {
-            if (Array.from(e.changedTouches).some(t => t.identifier === moveTouchId)) {
-                moveTouchId = null;
-                moveX = 0;
-                moveZ = 0;
-            }
-        });
+    // =============================================
+    // 10. Animation Loop
+    // =============================================
+    function animate() {
+      requestAnimationFrame(animate);
+      updateMovement();
+      updateCursor();
+      renderer.render(scene, camera);
+    }
+    animate();
 
-        lookJoystick.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            lookTouchId = e.touches[0].identifier;
-        }, { passive: false });
-
-        lookJoystick.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = Array.from(e.touches).find(t => t.identifier === lookTouchId);
-            if (touch) {
-                const rect = lookJoystick.getBoundingClientRect();
-                const x = (touch.clientX - rect.left) / rect.width;
-                const y = (touch.clientY - rect.top) / rect.height;
-                lookX = (x - 0.5) * -2; // Left/Right
-                lookY = (y - 0.5) * -2; // Up/Down
-            }
-        }, { passive: false });
-
-        lookJoystick.addEventListener('touchend', (e) => {
-            if (Array.from(e.changedTouches).some(t => t.identifier === lookTouchId)) {
-                lookTouchId = null;
-                lookX = 0;
-                lookY = 0;
-            }
-        });
-
-        // Update preview cube position
-        function updatePreview() {
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(plane);
-            if (intersects.length > 0) {
-                const intersect = intersects[0];
-                previewCube.position.copy(intersect.point).add(intersect.face.normal.multiplyScalar(0.5));
-                previewCube.position.y = 0.5;
-                previewCube.visible = true;
-            } else {
-                previewCube.visible = false;
-            }
-        }
-
-        // Place cube
-        document.getElementById('placeBtn').addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if (previewCube.visible) {
-                const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-                const cubeMaterial = new THREE.MeshPhongMaterial({
-                    color: Math.random() * 0x663399 + 0x330066,
-                });
-                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-                cube.position.copy(previewCube.position);
-                scene.add(cube);
-            }
-        });
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Move camera relative to view
-            const forward = new THREE.Vector3(0, 0, moveZ * -0.1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(moveX * 0.1, 0, 0).applyQuaternion(camera.quaternion);
-            camera.position.add(forward);
-            camera.position.add(right);
-            camera.position.y = 2; // Lock height
-
-            // Limit movement
-            camera.position.x = Math.max(-9, Math.min(9, camera.position.x));
-            camera.position.z = Math.max(-9, Math.min(9, camera.position.z));
-
-   // Rotate camera (FPS look: yaw and pitch only, no roll)
-const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-euler.setFromQuaternion(camera.quaternion);
-euler.y += lookX * 0.01; // Yaw (left/right)
-euler.x += lookY * 0.01; // Pitch (up/down)
-euler.x = Math.max(-Math.PI/3, Math.min(Math.PI/3, euler.x)); // Limit pitch
-camera.quaternion.setFromEuler(euler);
-
-            
-            // Update preview
-            updatePreview();
-  // Spin the cube slowly
-spinningCube.rotation.y += 0.01;
-
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 </body>
 </html>
