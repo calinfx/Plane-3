@@ -91,6 +91,14 @@
         plane.rotation.x = -Math.PI / 2;
         scene.add(plane);
 
+        // Spinning cube
+const spinningCubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+const spinningCubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+const spinningCube = new THREE.Mesh(spinningCubeGeometry, spinningCubeMaterial);
+spinningCube.position.set(3, 1, 3); // Place it near the player
+scene.add(spinningCube);
+
+
      // Cube placement preview (red edges only)
 const previewGeometry = new THREE.BoxGeometry(1.05, 1.05, 1.05);
 const edges = new THREE.EdgesGeometry(previewGeometry);
@@ -214,6 +222,8 @@ camera.quaternion.setFromEuler(euler);
             
             // Update preview
             updatePreview();
+  // Spin the cube slowly
+spinningCube.rotation.y += 0.01;
 
             renderer.render(scene, camera);
         }
